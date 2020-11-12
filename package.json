@@ -1,0 +1,28 @@
+{
+    "name": "coding-generic",
+    "version": "1.0.1",
+    "description": "",
+    "main": "index.js",
+    "bin": {
+        "coding-generic": "./bin/index.js"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "dependencies": {
+        "axios": "^0.20.0",
+        "chalk": "^4.1.0",
+        "cos-nodejs-sdk-v5": "^2.8.2",
+        "form-data": "^3.0.0",
+        "progress": "^2.0.3",
+        "prompts": "^2.3.2",
+        "spark-md5": "^3.0.1",
+        "winston": "^3.3.3",
+        "winston-daily-rotate-file": "^4.5.0",
+        "yargs": "^16.0.3"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git@github.com:Coding/coding-generic.git"
+    }
+}
