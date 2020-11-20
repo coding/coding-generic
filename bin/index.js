@@ -130,6 +130,7 @@ const upload = async (filePath, parts = []) => {
 const getFileMD5Success = async (filePath) => {
     try {
         const res = await _getExistChunks(requestUrl, {
+            fileSize,
             version,
             fileTag: md5
         }, {
