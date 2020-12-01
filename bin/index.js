@@ -5,7 +5,6 @@ const SparkMD5 = require('spark-md5');
 const chalk = require('chalk');
 const prompts = require('prompts');
 const path = require('path');
-const FormData = require('form-data');
 require('winston-daily-rotate-file');
 const logger = require('../lib/log');
 const ProgressBar = require('progress');
@@ -29,26 +28,24 @@ process.on('uncaughtException', error => {
 const upload = async (filePath, parts = []) => {
     const totalChunk = Math.ceil(fileSize / CHUNK_SIZE);
 
-    const bar = new ProgressBar(':bar [:current/:total] :percent', { total: totalChunk });
+    const bar = new ProgressBar(':bar [:current/:total] :percent ', { total: totalChunk });
     const uploadChunk = async (currentChunk, currentChunkIndex, parts, isRetry) => {
         if (parts.some(({ partNumber, size }) => partNumber === currentChunkIndex && size === currentChunk.length)) {
             bar.tick();
             return Promise.resolve();
         }
 
-        const form = new FormData();
-        form.append('chunk', currentChunk, {
-            filename: requestUrl.replace(/^http(s)?:\/\/.+?\/.+?\/.+?\//, '')
-        });
         try {
             await _uploadChunk(requestUrl, {
                 uploadId,
                 version,
                 partNumber: currentChunkIndex,
                 size: currentChunk.length,
-                form
+                currentChunk 
             }, {
-                headers: form.getHeaders(),
+                headers: {
+                    'Content-Type': 'application/octet-stream'
+                },
                 Authorization
             });
             bar.tick();
@@ -163,7 +160,7 @@ const getFileMD5 = async (filePath) => {
         console.log(`\n开始计算 MD5\n`)
         logger.info('开始计算 MD5')
 
-        const bar = new ProgressBar(':bar [:current/:total] :percent', { total: totalChunk });
+        const bar = new ProgressBar(':bar [:current/:total] :percent ', { total: totalChunk });
         await new Promise(resolve => {
             stream = fs.createReadStream(filePath, { highWaterMark: CHUNK_SIZE })
             stream.on('data', chunk => {
