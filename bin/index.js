@@ -120,8 +120,6 @@ const upload = async (filePath, parts = []) => {
 
     try {
         const res = await withRetry(merge, 3, 500);
-        // console.log('res: ', res);
-        // console.log(res.code, res.message)
         if (res.code) {
             throw (res.message);
         }
