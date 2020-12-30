@@ -6,10 +6,13 @@ const chalk = require('chalk');
 const prompts = require('prompts');
 const path = require('path');
 require('winston-daily-rotate-file');
-const logger = require('../lib/log');
 const ProgressBar = require('progress');
+const BlueBirdPromise = require("bluebird");
+
+const logger = require('../lib/log');
 const { CHUNK_SIZE } = require('../lib/constants');
 const { generateAuthorization, getRegistryInfo } = require('../lib/utils');
+
 const { getExistChunks: _getExistChunks, uploadChunk: _uploadChunk, mergeAllChunks: _mergeAllChunks } = require('../lib/request');
 
 const { withRetry } = require('../lib/withRetry');
@@ -75,12 +78,15 @@ const upload = async (filePath, parts = []) => {
     logger.info('开始上传')
 
     try {
-        for (let currentChunkIndex = 1; currentChunkIndex <= totalChunk; currentChunkIndex++) {
+
+        const chunkIndexs = new Array(totalChunk).fill("").map((_,index) => index+1)
+
+        await BlueBirdPromise.map(chunkIndexs,(currentChunkIndex)=>{
             const start = (currentChunkIndex - 1) * CHUNK_SIZE;
             const end = ((start + CHUNK_SIZE) >= fileSize) ? fileSize : start + CHUNK_SIZE - 1;
             const stream = fs.createReadStream(filePath, { start, end })
             let buf = [];
-            await new Promise((resolve) => {
+            return new Promise((resolve) => {
                 stream.on('data', data => {
                     buf.push(data)
                 })
@@ -95,7 +101,8 @@ const upload = async (filePath, parts = []) => {
             }).catch(error => {
                 throw Error(error)
             })
-        }
+        }, { concurrency: argv.concurrency })
+
     } catch (error) {
         logger.error(error.message);
         logger.error(error.stack);
