@@ -6,14 +6,18 @@ const chalk = require('chalk');
 const prompts = require('prompts');
 const path = require('path');
 require('winston-daily-rotate-file');
-const logger = require('../lib/log');
 const ProgressBar = require('progress');
-const { CHUNK_SIZE } = require('../lib/constants');
-const { generateAuthorization, getRegistryInfo } = require('../lib/utils');
-const { getExistChunks: _getExistChunks, uploadChunk: _uploadChunk, uploadSuccess: _uploadSuccess } = require('../lib/request');
 const BlueBirdPromise = require("bluebird");
 
+const logger = require('../lib/log');
+const { CHUNK_SIZE } = require('../lib/constants');
+const { generateAuthorization, getRegistryInfo } = require('../lib/utils');
+
+const { getExistChunks: _getExistChunks, uploadChunk: _uploadChunk, mergeAllChunks: _mergeAllChunks } = require('../lib/request');
+
+const { withRetry } = require('../lib/withRetry');
 const argv = require('../lib/argv');
+
 const { requestUrl, version } = getRegistryInfo(argv.registry);
 
 let Authorization = '';
@@ -106,8 +110,12 @@ const upload = async (filePath, parts = []) => {
         return;
     }
 
-    try {
-        const res = await _uploadSuccess(requestUrl, {
+
+
+    
+
+    const merge =  async () => 
+        await _mergeAllChunks(requestUrl, {
             version,
             uploadId,
             fileSize,
@@ -115,6 +123,10 @@ const upload = async (filePath, parts = []) => {
         }, {
             Authorization
         });
+    
+
+    try {
+        const res = await withRetry(merge, 3, 500);
         if (res.code) {
             throw (res.message);
         }
