@@ -115,8 +115,9 @@ const upload = async (filePath, parts = []) => {
 
     
 
-    const merge =  async () =>
-        await _mergeAllChunks(requestUrl, {
+    const merge =  async () => {
+        console.log(chalk.cyan('正在合并分片，请稍等...'))
+        return await _mergeAllChunks(requestUrl, {
             version,
             uploadId,
             fileSize,
@@ -124,6 +125,7 @@ const upload = async (filePath, parts = []) => {
         }, {
             Authorization
         });
+    }
     
 
     try {
