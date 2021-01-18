@@ -10,7 +10,7 @@ const ProgressBar = require('progress');
 const BlueBirdPromise = require("bluebird");
 
 const logger = require('../lib/log');
-const { CHUNK_SIZE } = require('../lib/constants');
+const { DEFAULT_CHUNK_SIZE, MAX_CHUNK } = require('../lib/constants');
 const { generateAuthorization, getRegistryInfo } = require('../lib/utils');
 
 const { getExistChunks: _getExistChunks, uploadChunk: _uploadChunk, mergeAllChunks: _mergeAllChunks } = require('../lib/request');
@@ -25,14 +25,15 @@ let md5 = '';
 let uploadId = '';
 let fileSize = 0;
 
+let chunkSize = DEFAULT_CHUNK_SIZE;
+let totalChunk = 0;
+
 process.on('uncaughtException', error => {
     console.log(chalk.red('\n程序发生了一些异常，请稍后重试\n'));
     logger.error(error.stack);
 })
 
 const upload = async (filePath, parts = []) => {
-    const totalChunk = Math.ceil(fileSize / CHUNK_SIZE);
-
     const bar = new ProgressBar(':bar [:current/:total] :percent ', { total: totalChunk });
     const uploadChunk = async (currentChunk, currentChunkIndex, parts, isRetry) => {
         if (parts.some(({ partNumber, size }) => partNumber === currentChunkIndex && size === currentChunk.length)) {
@@ -82,8 +83,8 @@ const upload = async (filePath, parts = []) => {
         const chunkIndexs = new Array(totalChunk).fill("").map((_,index) => index+1)
 
         await BlueBirdPromise.map(chunkIndexs,(currentChunkIndex)=>{
-            const start = (currentChunkIndex - 1) * CHUNK_SIZE;
-            const end = ((start + CHUNK_SIZE) >= fileSize) ? fileSize : start + CHUNK_SIZE - 1;
+            const start = (currentChunkIndex - 1) * chunkSize;
+            const end = ((start + chunkSize) >= fileSize) ? fileSize : start + chunkSize - 1;
             const stream = fs.createReadStream(filePath, { start, end })
             let buf = [];
             return new Promise((resolve) => {
@@ -114,7 +115,7 @@ const upload = async (filePath, parts = []) => {
 
     
 
-    const merge =  async () => 
+    const merge =  async () =>
         await _mergeAllChunks(requestUrl, {
             version,
             uploadId,
@@ -171,7 +172,11 @@ const getFileMD5Success = async (filePath) => {
 }
 
 const getFileMD5 = async (filePath) => {
-    const totalChunk = Math.ceil(fileSize / CHUNK_SIZE);
+    totalChunk = Math.ceil(fileSize / DEFAULT_CHUNK_SIZE);
+    if (totalChunk > MAX_CHUNK) {
+        chunkSize = Math.ceil(fileSize / MAX_CHUNK);
+        totalChunk = Math.ceil(fileSize / chunkSize);
+    }
     const spark = new SparkMD5.ArrayBuffer();
     try {
         console.log(`\n开始计算 MD5\n`)
@@ -179,7 +184,7 @@ const getFileMD5 = async (filePath) => {
 
         const bar = new ProgressBar(':bar [:current/:total] :percent ', { total: totalChunk });
         await new Promise(resolve => {
-            stream = fs.createReadStream(filePath, { highWaterMark: CHUNK_SIZE })
+            stream = fs.createReadStream(filePath, { highWaterMark: chunkSize })
             stream.on('data', chunk => {
                 bar.tick();
                 spark.append(chunk)
