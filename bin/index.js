@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 const fs = require('fs');
-const SparkMD5 = require('spark-md5');
+const crypto = require('crypto');
 const chalk = require('chalk');
 const prompts = require('prompts');
 const path = require('path');
@@ -47,7 +47,7 @@ const upload = async (filePath, parts = []) => {
                 version,
                 partNumber: currentChunkIndex,
                 size: currentChunk.length,
-                currentChunk 
+                currentChunk
             }, {
                 headers: {
                     'Content-Type': 'application/octet-stream'
@@ -111,10 +111,6 @@ const upload = async (filePath, parts = []) => {
         return;
     }
 
-
-
-    
-
     const merge =  async () => {
         console.log(chalk.cyan('正在合并分片，请稍等...'))
         return await _mergeAllChunks(requestUrl, {
@@ -126,7 +122,6 @@ const upload = async (filePath, parts = []) => {
             Authorization
         });
     }
-    
 
     try {
         const res = await withRetry(merge, 3, 500);
@@ -169,7 +164,6 @@ const getFileMD5Success = async (filePath) => {
         logger.error(error.message);
         logger.error(error.stack);
         console.log(chalk.red((error.response && error.response.data) || error.message));
-        return;
     }
 }
 
@@ -179,7 +173,7 @@ const getFileMD5 = async (filePath) => {
         chunkSize = Math.ceil(fileSize / MAX_CHUNK);
         totalChunk = Math.ceil(fileSize / chunkSize);
     }
-    const spark = new SparkMD5.ArrayBuffer();
+    const hash = crypto.createHash('md5');
     try {
         console.log(`\n开始计算 MD5\n`)
         logger.info('开始计算 MD5')
@@ -189,14 +183,14 @@ const getFileMD5 = async (filePath) => {
             stream = fs.createReadStream(filePath, { highWaterMark: chunkSize })
             stream.on('data', chunk => {
                 bar.tick();
-                spark.append(chunk)
+                hash.update(chunk)
             })
             stream.on('error', error => {
                 reject('读取文件分片异常，请重新执行命令继续上传');
             })
             stream.on('end', async () => {
-                md5 = spark.end();
-                spark.destroy();
+                md5 = hash.digest('hex');
+                hash.destroy();
                 console.log(`\n文件 MD5：${md5}\n`)
                 await getFileMD5Success(filePath);
                 resolve();
@@ -208,7 +202,6 @@ const getFileMD5 = async (filePath) => {
         console.log(chalk.red((error.response && error.response.data) || error.message));
         logger.error(error.message);
         logger.error(error.stack);
-        return;
     }
 }
 
