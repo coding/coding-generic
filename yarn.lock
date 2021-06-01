@@ -708,11 +708,6 @@ sisteransi@^1.0.5:
   resolved "https://registry.npm.taobao.org/sisteransi/download/sisteransi-1.0.5.tgz#134d681297756437cc05ca01370d3a7a571075ed"
   integrity sha1-E01oEpd1ZDfMBcoBNw06elcQde0=
 
-spark-md5@^3.0.1:
-  version "3.0.1"
-  resolved "https://registry.npm.taobao.org/spark-md5/download/spark-md5-3.0.1.tgz#83a0e255734f2ab4e5c466e5a2cfc9ba2aa2124d"
-  integrity sha1-g6DiVXNPKrTlxGblos/JuiqiEk0=
-
 sshpk@^1.7.0:
   version "1.16.1"
   resolved "https://registry.npm.taobao.org/sshpk/download/sshpk-1.16.1.tgz#fb661c0bef29b39db40769ee39fa70093d6f6877"
