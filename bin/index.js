@@ -58,7 +58,7 @@ const upload = async (filePath, parts = []) => {
         } catch (error) {
             logger.error(error.message);
             logger.error(error.stack);
-            if (['ECONNREFUSED', 'ECONNRESET', 'ENOENT'].includes(error.code)) {
+            if (['ECONNREFUSED', 'ECONNRESET', 'ENOENT', 'EPROTO'].includes(error.code)) {
                 // 没有重试过就重试一次
                 if (!isRetry) {
                     logger.warn('retry')
