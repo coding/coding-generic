@@ -108,7 +108,7 @@ const upload = async (filePath, parts = []) => {
         logger.error(error.message);
         logger.error(error.stack);
         console.log(chalk(error.message));
-        return;
+        process.exit(1);
     }
 
 
@@ -169,7 +169,7 @@ const getFileMD5Success = async (filePath) => {
         logger.error(error.message);
         logger.error(error.stack);
         console.log(chalk.red((error.response && error.response.data) || error.message));
-        return;
+        process.exit(1);
     }
 }
 
@@ -208,7 +208,7 @@ const getFileMD5 = async (filePath) => {
         console.log(chalk.red((error.response && error.response.data) || error.message));
         logger.error(error.message);
         logger.error(error.stack);
-        return;
+        process.exit(1);
     }
 }
 
@@ -217,7 +217,7 @@ const beforeUpload = async (filePath) => {
         const stat = fs.lstatSync(filePath);
         if (stat.isDirectory()) {
             console.log(chalk.red(`\n${filePath}不合法，需指定一个文件\n`))
-            return ;
+            process.exit(1);
         }
         fileSize = stat.size;
     } catch (error) {
@@ -228,8 +228,7 @@ const beforeUpload = async (filePath) => {
             logger.error(error.stack);
             console.log(chalk.red((error.response && error.response.data) || error.message));
         }
-        process.exitCode = 1;
-        return;
+        process.exit(1);
     }
     await getFileMD5(filePath);
 }
