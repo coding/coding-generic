@@ -74,10 +74,12 @@ const upload = async (filePath, parts = [], requestUrl) => {
                 } else {
                     console.log(chalk.red('网络连接异常，请重新执行命令继续上传'));
                     logger.error(`分片（${currentChunkIndex}）上传时网络连接异常 (path: ${filePath}) , url: ${requestUrl})`);
+                    await logger.close();
                     process.exit(1);
                 }
             } else {
                 console.log(chalk.red((error.response && error.response.data) || error.message));
+                await logger.close();
                 process.exit(1);
             }
         }
@@ -119,6 +121,7 @@ const upload = async (filePath, parts = [], requestUrl) => {
         logger.error(error.message);
         logger.error(error.stack);
         console.log(chalk(error.message));
+        await logger.close();
         process.exit(1);
     }
 
@@ -150,6 +153,7 @@ const upload = async (filePath, parts = [], requestUrl) => {
         logger.error(error.message);
         logger.error(error.stack);
         console.log(chalk.red((error.response && error.response.data) || error.message));
+        await logger.close();
         process.exit(1);
     }
 
@@ -169,6 +173,7 @@ const getFileMD5Success = async (filePath, requestUrl) => {
             Authorization
         });
         if (res.code) {
+            logger.info(`获取已上传信息错误(1): ${JSON.stringify(res)} (path: ${filePath} , url: ${requestUrl})`);
             throw (res.message);
         }
         uploadId = res.data.uploadId;
@@ -181,10 +186,11 @@ const getFileMD5Success = async (filePath, requestUrl) => {
             uploadedParts = []
         }
     } catch (error) {
-        logger.error(`获取已上传信息错误 (path: ${filePath} , url: ${requestUrl})`);
+        logger.error(`获取已上传信息错误(2) (path: ${filePath} , url: ${requestUrl})`);
         logger.error(error.message);
         logger.error(error.stack);
         console.log(chalk.red((error.response && error.response.data) || error.message));
+        await logger.close();
         process.exit(1);
     }
 
@@ -227,13 +233,14 @@ const getFileMD5 = async (filePath, requestUrl) => {
         console.log(chalk.red((error.response && error.response.data) || error.message));
         logger.error(error.message);
         logger.error(error.stack);
+        await logger.close();
         process.exit(1);
     }
 }
 
 const uploadFile = async (filePath, size, requestUrl) => {
     fileSize = size;
-    logger.info(`('************************ 开始上传 (${filePath}) ('************************`);
+    logger.info(`************************ 开始上传 (${filePath}) ************************`);
     await getFileMD5(filePath, requestUrl);
     md5 = '';
     uploadId = '';
@@ -262,6 +269,7 @@ const uploadDir = async (dir) => {
             console.log(chalk.red((error.response && error.response.data) || error.message));
             logger.error(error.message);
             logger.error(error.stack);
+            await logger.close();
             process.exit(1);
         } else {
             return files;
@@ -290,9 +298,11 @@ const beforeUpload = async (filePath) => {
         const isDirectory = stat.isDirectory();
         if (isDirectory && !isUploadDir) {
             console.log(chalk.red(`\n${filePath}不合法，需指定一个文件\n`))
+            await logger.close();
             process.exit(1);
         } else if (!isDirectory && isUploadDir) {
             console.log(chalk.red(`\n${filePath}不合法，需指定一个文件夹\n`))
+            await logger.close();
             process.exit(1);
         }
         fSize = stat.size;
@@ -304,6 +314,7 @@ const beforeUpload = async (filePath) => {
             logger.error(error.stack);
             console.log(chalk.red((error.response && error.response.data) || error.message));
         }
+        await logger.close();
         process.exit(1);
     }
     if (isUploadDir) {
@@ -313,16 +324,18 @@ const beforeUpload = async (filePath) => {
     }
 }
 
-const onUpload = (_username, _password) => {
+const onUpload = async (_username, _password) => {
     Authorization = generateAuthorization(_username, _password);
 
     logger.info('************************ 准备上传 ************************')
 
     if (path.isAbsolute(argv.path)) {
-        beforeUpload(argv.path);
+        await beforeUpload(argv.path);
     } else {
-        beforeUpload(path.join(process.cwd(), argv.path))
+        await beforeUpload(path.join(process.cwd(), argv.path))
     }
+
+    await logger.close();
 }
 
 const [username, password] = argv.username.split(':');
