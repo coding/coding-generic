@@ -39,10 +39,12 @@ const upload = async (filePath, parts = [], requestUrl) => {
     const uploadChunk = async (currentChunk, currentChunkIndex, parts, isRetry) => {
         if (parts.some(({ partNumber, size }) => partNumber === currentChunkIndex && size === currentChunk.length)) {
             bar.tick();
+            logger.info(`分片（${currentChunkIndex}）已经上传，跳过 (path: ${filePath}) , url: ${requestUrl})`);
             return Promise.resolve();
         }
 
         try {
+            logger.info(`开始上传分片（${currentChunkIndex}） (path: ${filePath}) , url: ${requestUrl})`);
             await _uploadChunk(requestUrl, {
                 uploadId,
                 version,
@@ -55,8 +57,11 @@ const upload = async (filePath, parts = [], requestUrl) => {
                 },
                 Authorization
             });
+            logger.info(`分片（${currentChunkIndex}）上传完毕 (path: ${filePath}) , url: ${requestUrl})`);
             bar.tick();
         } catch (error) {
+            console.error(`分片（${currentChunkIndex}）上传失败 (path: ${filePath}) , url: ${requestUrl})`);
+            logger.error(`分片（${currentChunkIndex}）上传失败 (path: ${filePath}) , url: ${requestUrl})`);
             logger.error(error.message);
             logger.error(error.stack);
             if (['ECONNREFUSED', 'ECONNRESET', 'ENOENT', 'EPROTO'].includes(error.code)) {
@@ -64,9 +69,11 @@ const upload = async (filePath, parts = [], requestUrl) => {
                 if (!isRetry) {
                     logger.warn('retry')
                     logger.warn(error.code);
+                    logger.info(`重试分片（${currentChunkIndex}）上传 (path: ${filePath}) , url: ${requestUrl})`);
                     await uploadChunk(currentChunk, currentChunkIndex, parts, true);
                 } else {
                     console.log(chalk.red('网络连接异常，请重新执行命令继续上传'));
+                    logger.error(`分片（${currentChunkIndex}）上传时网络连接异常 (path: ${filePath}) , url: ${requestUrl})`);
                     process.exit(1);
                 }
             } else {
@@ -77,18 +84,20 @@ const upload = async (filePath, parts = [], requestUrl) => {
     }
 
     console.log(`\n开始上传 (${filePath})\n`);
-    logger.info(`开始上传 (${filePath})`);
+    logger.info(`开始上传 (path: ${filePath}) , url: ${requestUrl})`);
 
     try {
 
-        const chunkIndexs = new Array(totalChunk).fill("").map((_, index) => index + 1)
+        const chunkIndexs = new Array(totalChunk).fill("").map((_, index) => index + 1);
+
+        logger.info(`分片总数：${totalChunk}，分片大小：${chunkSize} (path: ${filePath}) , url: ${requestUrl})`);
 
         await BlueBirdPromise.map(chunkIndexs, (currentChunkIndex) => {
             const start = (currentChunkIndex - 1) * chunkSize;
             const end = ((start + chunkSize) >= fileSize) ? fileSize : start + chunkSize - 1;
             const stream = fs.createReadStream(filePath, { start, end })
             let buf = [];
-            return new Promise((resolve) => {
+            return new Promise((resolve, reject) => {
                 stream.on('data', data => {
                     buf.push(data)
                 })
@@ -101,6 +110,7 @@ const upload = async (filePath, parts = [], requestUrl) => {
                     resolve();
                 })
             }).catch(error => {
+                logger.error(`读取分片 ${currentChunkIndex} 数据失败 (path: ${filePath}) , url: ${requestUrl})`);
                 throw Error(error)
             })
         }, { concurrency: argv.concurrency })
@@ -117,7 +127,8 @@ const upload = async (filePath, parts = [], requestUrl) => {
 
 
     const merge = async () => {
-        console.log(chalk.cyan('正在合并分片，请稍等...'))
+        console.log(chalk.cyan('正在合并分片，请稍等...'));
+        logger.info(`正在合并分片 (path: ${filePath}) , url: ${requestUrl})`);
         return await _mergeAllChunks(requestUrl, {
             version,
             uploadId,
@@ -132,21 +143,24 @@ const upload = async (filePath, parts = [], requestUrl) => {
     try {
         const res = await withRetry(merge, 3, 500);
         if (res.code) {
+            logger.error(`合并分片失败 (path: ${filePath}) , url: ${requestUrl})`);
             throw (res.message);
         }
     } catch (error) {
         logger.error(error.message);
         logger.error(error.stack);
         console.log(chalk.red((error.response && error.response.data) || error.message));
-        return;
+        process.exit(1);
     }
 
     console.log(chalk.green(`\n上传完毕 (${filePath})\n`))
-    logger.info('************************ 上传完毕 ************************')
+    logger.info(`************************ 上传完毕 (path: ${filePath}) , url: ${requestUrl}) ************************`)
 }
 
 const getFileMD5Success = async (filePath, requestUrl) => {
+    let uploadedParts = []
     try {
+        logger.info(`获取已上传信息 (path: ${filePath} , url: ${requestUrl})`);
         const res = await _getExistChunks(requestUrl, {
             fileSize,
             version,
@@ -158,20 +172,23 @@ const getFileMD5Success = async (filePath, requestUrl) => {
             throw (res.message);
         }
         uploadId = res.data.uploadId;
-
+        logger.info(`上传的 UploadId: ${uploadId} (path: ${filePath} , url: ${requestUrl})`);
         // 上传过一部分
         if (Array.isArray(res.data.parts)) {
-            await upload(filePath, res.data.parts, requestUrl);
+            uploadedParts = res.data.parts
         } else {
             // 未上传过
-            await upload(filePath, [], requestUrl);
+            uploadedParts = []
         }
     } catch (error) {
+        logger.error(`获取已上传信息错误 (path: ${filePath} , url: ${requestUrl})`);
         logger.error(error.message);
         logger.error(error.stack);
         console.log(chalk.red((error.response && error.response.data) || error.message));
         process.exit(1);
     }
+
+    await upload(filePath, uploadedParts, requestUrl);
 }
 
 const getFileMD5 = async (filePath, requestUrl) => {
@@ -186,8 +203,8 @@ const getFileMD5 = async (filePath, requestUrl) => {
         logger.info(`开始计算 MD5 (${filePath})`);
 
         const bar = new ProgressBar(':bar [:current/:total] :percent ', { total: totalChunk });
-        await new Promise(resolve => {
-            stream = fs.createReadStream(filePath, { highWaterMark: chunkSize });
+        await new Promise((resolve, reject) => {
+            const stream = fs.createReadStream(filePath, { highWaterMark: chunkSize });
             stream.on('data', chunk => {
                 bar.tick();
                 spark.append(chunk)
@@ -203,6 +220,7 @@ const getFileMD5 = async (filePath, requestUrl) => {
                 resolve();
             })
         }).catch(error => {
+            logger.error(`计算 MD5 失败(${filePath})`);
             throw Error(error);
         })
     } catch (error) {
@@ -215,6 +233,7 @@ const getFileMD5 = async (filePath, requestUrl) => {
 
 const uploadFile = async (filePath, size, requestUrl) => {
     fileSize = size;
+    logger.info(`('************************ 开始上传 (${filePath}) ('************************`);
     await getFileMD5(filePath, requestUrl);
     md5 = '';
     uploadId = '';
@@ -245,7 +264,7 @@ const uploadDir = async (dir) => {
             logger.error(error.stack);
             process.exit(1);
         } else {
-            resolve(files)
+            return files;
         }
     }
 

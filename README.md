@@ -9,6 +9,11 @@ npm install coding-generic -g
 
 ## 使用
 
+- 推送单个制品
 ```shell
 coding-generic --username=<USERNAME>[:password] --path=<FILE.EXT> --registry=<REGISTRY>
+```
+- 推送文件夹（仅 1.2.7 及以上版本支持）
+```shell
+coding-generic -u=coding@coding.com --dir --path=<LOCAL_FOLDER_NAME> --registry=<REGISTRY>
 ```

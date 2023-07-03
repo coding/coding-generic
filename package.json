@@ -1,6 +1,6 @@
 {
     "name": "coding-generic",
-    "version": "1.2.7",
+    "version": "1.2.8",
     "description": "",
     "main": "index.js",
     "bin": {
@@ -26,5 +26,8 @@
     "repository": {
         "type": "git",
         "url": "git@github.com:Coding/coding-generic.git"
+    },
+    "devDependencies": {
+        "eslint": "^8.44.0"
     }
 }
