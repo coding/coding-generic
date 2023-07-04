@@ -74,13 +74,13 @@ const upload = async (filePath, parts = [], requestUrl) => {
                 } else {
                     console.log(chalk.red('网络连接异常，请重新执行命令继续上传'));
                     logger.error(`分片（${currentChunkIndex}）上传时网络连接异常 (path: ${filePath}) , url: ${requestUrl})`);
-                    await logger.close();
-                    process.exit(1);
+                    await logger.close(() => process.exit(1));
+                    throw error;
                 }
             } else {
                 console.log(chalk.red((error.response && error.response.data) || error.message));
-                await logger.close();
-                process.exit(1);
+                await logger.close(() => process.exit(1));
+                throw error;
             }
         }
     }
@@ -121,8 +121,8 @@ const upload = async (filePath, parts = [], requestUrl) => {
         logger.error(error.message);
         logger.error(error.stack);
         console.log(chalk(error.message));
-        await logger.close();
-        process.exit(1);
+        await logger.close(() => process.exit(1));
+        throw error;
     }
 
 
@@ -153,8 +153,8 @@ const upload = async (filePath, parts = [], requestUrl) => {
         logger.error(error.message);
         logger.error(error.stack);
         console.log(chalk.red((error.response && error.response.data) || error.message));
-        await logger.close();
-        process.exit(1);
+        await logger.close(() => process.exit(1));
+        throw error;
     }
 
     console.log(chalk.green(`\n上传完毕 (${filePath})\n`))
@@ -189,9 +189,9 @@ const getFileMD5Success = async (filePath, requestUrl) => {
         logger.error(`获取已上传信息错误(2) (path: ${filePath} , url: ${requestUrl})`);
         logger.error(error.message);
         logger.error(error.stack);
-        console.log(chalk.red((error.response && error.response.data) || error.message));
-        await logger.close();
-        process.exit(1);
+        console.log(chalk.red((error.response && error.response.data) || error.message), `(path: ${filePath} , url: ${requestUrl}`);
+        await logger.close(() => process.exit(1));
+        throw error;
     }
 
     await upload(filePath, uploadedParts, requestUrl);
@@ -233,8 +233,8 @@ const getFileMD5 = async (filePath, requestUrl) => {
         console.log(chalk.red((error.response && error.response.data) || error.message));
         logger.error(error.message);
         logger.error(error.stack);
-        await logger.close();
-        process.exit(1);
+        await logger.close(() => process.exit(1));
+        throw error;
     }
 }
 
@@ -269,8 +269,8 @@ const uploadDir = async (dir) => {
             console.log(chalk.red((error.response && error.response.data) || error.message));
             logger.error(error.message);
             logger.error(error.stack);
-            await logger.close();
-            process.exit(1);
+            await logger.close(() => process.exit(1));
+            throw error;
         } else {
             return files;
         }
@@ -298,12 +298,10 @@ const beforeUpload = async (filePath) => {
         const isDirectory = stat.isDirectory();
         if (isDirectory && !isUploadDir) {
             console.log(chalk.red(`\n${filePath}不合法，需指定一个文件\n`))
-            await logger.close();
-            process.exit(1);
+            await logger.close(() => process.exit(1));
         } else if (!isDirectory && isUploadDir) {
             console.log(chalk.red(`\n${filePath}不合法，需指定一个文件夹\n`))
-            await logger.close();
-            process.exit(1);
+            await logger.close(() => process.exit(1));
         }
         fSize = stat.size;
     } catch (error) {
@@ -314,8 +312,8 @@ const beforeUpload = async (filePath) => {
             logger.error(error.stack);
             console.log(chalk.red((error.response && error.response.data) || error.message));
         }
-        await logger.close();
-        process.exit(1);
+        await logger.close(() => process.exit(1));
+        throw error;
     }
     if (isUploadDir) {
         await uploadDir(filePath);
