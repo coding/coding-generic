@@ -17,3 +17,8 @@ coding-generic -u=<USERNAME>[:password] --path=<LOCAL_FILE_NAME> --registry=<REG
 ```shell
 coding-generic -u=<USERNAME>[:password] --dir --path=<LOCAL_FOLDER_NAME> --registry=<REGISTRY>
 ```
+
+- 下载文件夹（仅 1.2.13 及以上版本支持）
+```shell
+coding-generic --pull -u=<USERNAME>[:password] --registry=<REGISTRY>/list/<DIR>?version=<VERSION>
+```

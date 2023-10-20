@@ -18,6 +18,7 @@ const { getExistChunks: _getExistChunks, uploadChunk: _uploadChunk, mergeAllChun
 
 const { withRetry } = require('../lib/withRetry');
 const argv = require('../lib/argv');
+const { onDownload } = require('../lib/download');
 
 const { requestUrl, version } = getRegistryInfo(argv.registry);
 
@@ -339,7 +340,11 @@ const onUpload = async (_username, _password) => {
 const [username, password] = argv.username.split(':');
 
 if (username && password) {
-    onUpload(username, password);
+    if (argv.pull) {
+        onDownload()
+    } else {
+        onUpload(username, password);
+    }
 } else {
     prompts([
         {
@@ -353,7 +358,10 @@ if (username && password) {
     ).then(async (answers) => {
         if (!answers.password) {
             return;
+        } if (argv.pull) {
+            onDownload()
+        } else {
+            onUpload(argv.username, answers.password);
         }
-        onUpload(argv.username, answers.password);
     })
 }
